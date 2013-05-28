@@ -1,0 +1,9 @@
+(set *language* "system-verilog")
+(set *implementation* "system-verilog")
+(set *release* 0.1)
+(set *port* 0.1)
+(set *porters* "Wei Hu")
+(set *home-directory* ".")
+(set *stinput* 2147483648)
+(set *stoutput* 2147483649)
+
