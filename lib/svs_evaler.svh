@@ -81,7 +81,7 @@ class svs_evaler;
     end
     reader = new;
     stack = new;
-    enable_tco = 0;
+    enable_tco = 1;
     exception = null;
   endfunction
 
