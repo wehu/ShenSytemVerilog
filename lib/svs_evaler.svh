@@ -13,17 +13,19 @@ class svs_evaler;
 
   svs_stack stack;
 
-  static svs_node empty_list = new("list", '{"", 0, {}});
-  static svs_node true = new("bool", '{"true", 0, {}});
-  static svs_node false = new("bool", '{"false", 0, {}});
-  static svs_node nil = new("symbol", '{"NIL", 0, {}});
+  static svs_node empty_list = new("list", '{"", 0, {}, {}});
+  static svs_node true = new("bool", '{"true", 0, {}, {}});
+  static svs_node false = new("bool", '{"false", 0, {}, {}});
+  static svs_node nil = new("symbol", '{"NIL", 0, {}, {}});
   int primitives[string];
   static integer object_counter = 0;
+
+  bit enable_tco;
 
   svs_node exception;
 
   function new();
-    string ps[0:48] = '{"if",
+    string ps[] = '{"if",
                      "and",
                      "or",
                      "cond",
@@ -74,11 +76,12 @@ class svs_evaler;
                      "exit"};
     integer i;
     svs_reader reader;
-    for(i=0; i<=48; i++) begin
+    for(i=0; i<=ps.size(); i++) begin
       primitives[ps[i]] = 1;
     end
     reader = new;
     stack = new;
+    enable_tco = 0;
     exception = null;
   endfunction
 
@@ -302,7 +305,7 @@ class svs_evaler;
         stack.add_param(fargs.val.as_seq[i].val.as_string, rargs[i]);
       end
       //for(i=1; i<fsize; i++) begin
-        if(f.val.as_seq[1].typ == "list" && tc != `TC_RESET)
+        if(f.val.as_seq[1].typ == "list" && tc != `TC_RESET && enable_tco == 1)
           res = tco(f.val.as_seq[1]);
         else
           res = eval(f.val.as_seq[1], `TC_READY);
@@ -404,7 +407,7 @@ class svs_evaler;
     if(c.typ != "bool")
       return new_exception(ast, {"if expects a boolean as the first argument but got ", c.typ});
     if(c == true) begin
-      if(ast.val.as_seq[2].typ == "list" && tc != `TC_RESET)
+      if(ast.val.as_seq[2].typ == "list" && tc != `TC_RESET && enable_tco == 1)
         res = tco(ast.val.as_seq[2]);
       else
         res = eval(ast.val.as_seq[2], `TC_READY);
@@ -412,7 +415,7 @@ class svs_evaler;
         return exception;
     end else begin
       if(size == 4) begin
-        if(ast.val.as_seq[3].typ == "list" && tc != `TC_RESET)
+        if(ast.val.as_seq[3].typ == "list" && tc != `TC_RESET && enable_tco == 1)
           res = tco(ast.val.as_seq[3]);
         else
           res = eval(ast.val.as_seq[3], `TC_READY);
@@ -482,7 +485,7 @@ class svs_evaler;
       if(c.typ != "bool")
         return new_exception(ast, {"cond's pair expects a boolean as the first argument but got ", c.typ});
       if(c == true) begin
-        if(p.val.as_seq[1].typ == "list" && tc != `TC_RESET)
+        if(p.val.as_seq[1].typ == "list" && tc != `TC_RESET && enable_tco == 1)
           res = tco(p.val.as_seq[1]);
         else 
           res = eval(p.val.as_seq[1], `TC_READY);
@@ -765,8 +768,6 @@ class svs_evaler;
     svs_node i;
     svs_node l;
     svs_node res;
-    integer li;
-    integer lsize;
     if(size < 3)
       return partial(ast, 3);
     if(size != 3)
@@ -779,18 +780,7 @@ class svs_evaler;
       return exception;
     res = new_node(ast, "cons");
     res.val.as_seq.push_back(i);
-    if(l.typ == "cons") begin
-      lsize = l.val.as_seq.size();
-      for(li=0; li<lsize; li++) begin
-        res.val.as_seq.push_back(l.val.as_seq[li]);
-      end
-      res.dot = l.dot;
-    end else if(l == empty_list) begin
-      res.dot = 0;
-    end else begin
-      res.val.as_seq.push_back(l);
-      res.dot = 1;
-    end
+    res.val.as_seq.push_back(l);
     return res;
   endfunction
 
@@ -814,8 +804,6 @@ class svs_evaler;
   function svs_node eval_tl(svs_node ast);
     integer size = ast.val.as_seq.size();
     svs_node l;
-    integer li;
-    integer lsize;
     svs_node res;
     if(size < 2)
       return partial(ast, 2);
@@ -826,15 +814,7 @@ class svs_evaler;
       return exception;
     if(l.typ != "cons")
       return new_exception(ast, {"tl expects a list as the second argument but got ", l.typ});
-    lsize = l.val.as_seq.size();
-    if(lsize == 1)
-      return empty_list;
-    if(lsize == 2 && l.dot == 1)
-      return l.val.as_seq[1];
-    res = new("cons");
-    for(li=1; li<lsize; li++)
-      res.val.as_seq.push_back(l.val.as_seq[li]);
-    res.dot = l.dot;
+    res = l.val.as_seq[1];
     return res;
   endfunction
 
@@ -948,7 +928,7 @@ class svs_evaler;
       f.copy(stack.top());
     stack.push_frame(f);
     stack.add_param(n.val.as_string, v);
-    if(ast.val.as_seq[3].typ == "list" && tc != `TC_RESET)
+    if(ast.val.as_seq[3].typ == "list" && tc != `TC_RESET && enable_tco == 1)
       res = tco(ast.val.as_seq[3]);
     else
       res = eval(ast.val.as_seq[3], `TC_READY);
@@ -1029,10 +1009,11 @@ class svs_evaler;
     integer size = ast.val.as_seq.size();
     svs_node res;
     if(ast.typ == "cons") begin
-      integer i;
+      svs_node t = ast;
       res = new("list");
-      for(i=0; i<size; i++) begin
-        res.val.as_seq.push_back(translate_ast(ast.val.as_seq[i]));
+      while(t.typ == "cons") begin
+        res.val.as_seq.push_back(translate_ast(t.val.as_seq[0]));
+        t = t.val.as_seq[1];
       end
     end else begin
       res = ast;
@@ -1064,9 +1045,10 @@ class svs_evaler;
       return new_exception(ast, "absvector size should > 0");
     //n0.val.as_number = i.val.as_number;
     //res.val.as_seq.push_back(n0);
-    for(vi=0; vi<i.val.as_number; vi++) begin
-      res.val.as_seq.push_back(nil);
-    end
+    res.val.as_array = new[integer'(i.val.as_number)];
+    //for(vi=0; vi<i.val.as_number; vi++) begin
+    //  res.val.as_array[vi] = nil;
+    //end
     return res;
   endfunction
 
@@ -1089,12 +1071,12 @@ class svs_evaler;
       return exception;
     if(i.typ != "number")
       return new_exception(ast, {"address-> expects an number as the second argument but got ", i.typ});
-    if(i.val.as_number >= vec.val.as_seq.size())
+    if(i.val.as_number >= vec.val.as_array.size())
       return new_exception(ast, "address-> index > size"); 
     v = eval(ast.val.as_seq[3]);
     if(exception != null)
       return exception;
-    vec.val.as_seq[integer'(i.val.as_number)] = v;
+    vec.val.as_array[integer'(i.val.as_number)] = v;
     return vec;
   endfunction
 
@@ -1117,9 +1099,9 @@ class svs_evaler;
       return exception;
     if(i.typ != "number")
       return new_exception(ast, {"<-address expects an number as the second argument but got ", i.typ});
-    if(i.val.as_number >= vec.val.as_seq.size())
+    if(i.val.as_number >= vec.val.as_array.size())
       return new_exception(ast, "<-address index > size ");
-    v = vec.val.as_seq[integer'(i.val.as_number)];
+    v = vec.val.as_array[integer'(i.val.as_number)];
     return v;
   endfunction
 
@@ -1348,7 +1330,7 @@ class svs_evaler;
     res = eval(ast.val.as_seq[1]);
     if(exception != null)
       return exception;
-    if(ast.val.as_seq[2].typ == "list" && tc != `TC_RESET)
+    if(ast.val.as_seq[2].typ == "list" && tc != `TC_RESET && enable_tco == 1)
       res = tco(ast.val.as_seq[2]);
     else begin
       res = eval(ast.val.as_seq[2], `TC_READY);
