@@ -102,7 +102,7 @@ class svs_evaler;
     for(i=0; i<l; i++) begin
       res = eval(ast.val.as_seq[i], `TC_READY);
       if(exception != null) begin
-        $display(exception.val.as_string);
+        $display("%s", exception.val.as_string);
         $finish();
       end
     end
@@ -460,7 +460,7 @@ class svs_evaler;
       if(res == true)
         return true;
     end
-    return res;
+    return false;
   endfunction
 
   function svs_node eval_cond(svs_node ast, int tc);
@@ -581,8 +581,10 @@ class svs_evaler;
       string n;
       n.realtoa(s.val.as_number);
       res.val.as_string = n; //{"^", n, "^"};
-    end else if(s.typ == "string" || s.typ == "symbol" || s.typ == "bool")
+    end else if(s.typ == "string" || s.typ == "symbol" || s.typ == "bool" || s.typ == "function")
       res.val.as_string = s.val.as_string; //{"^", s.val.as_string, "^"};
+    else if(s.typ == "list" || s.typ == "cons" || s.typ == "absvector")
+      res.val.as_string = s.to_string();
     else
       res.val.as_string = "...";
     return res;
@@ -894,16 +896,20 @@ class svs_evaler;
         return new_exception(ast, {"defun or lambda expects a symbol as function formal argument but got ", fargs.val.as_seq[i].typ});
     end
     f.val.as_seq.push_back(fargs);
-    if(fn == "defun")
+    if(fn == "defun") begin
       i = 3;
-    else if(fn == "lambda")
+      f.val.as_string = defn;
+    end else if(fn == "lambda") begin
       i = 2;
-    else
+      //f.val.as_string = "lambda";
+    end else begin
       i = 1;
+      //f.val.as_string = "continuation";
+    end
     f.val.as_seq.push_back(ast.val.as_seq[i]);
     if(fn == "defun")
       stack.add_func(defn, f);
-    if(stack.top() != null)
+    else if(stack.top() != null)
       scope.copy(stack.top());
     f.scope = scope;
     return f;
