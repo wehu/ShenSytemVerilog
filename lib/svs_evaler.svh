@@ -81,7 +81,7 @@ class svs_evaler;
     end
     reader = new;
     stack = new;
-    enable_tco = 1;
+    enable_tco = 0;
     exception = null;
   endfunction
 
@@ -291,7 +291,7 @@ class svs_evaler;
       integer fsize = f.val.as_seq.size();
       scope.copy(f.scope);
       if(fargs.val.as_seq.size() > size-1)
-        return partial(ast, size);
+        return partial(ast, fargs.val.as_seq.size()+1);
       if(fargs.val.as_seq.size() != size-1)
         return new_exception(ast, "the size of real arguments does not match the formal arguments");
       for(i=1; i<size; i++) begin
@@ -901,10 +901,10 @@ class svs_evaler;
       f.val.as_string = defn;
     end else if(fn == "lambda") begin
       i = 2;
-      //f.val.as_string = "lambda";
+      f.val.as_string = "...";
     end else begin
       i = 1;
-      //f.val.as_string = "continuation";
+      f.val.as_string = "...";
     end
     f.val.as_seq.push_back(ast.val.as_seq[i]);
     if(fn == "defun")
