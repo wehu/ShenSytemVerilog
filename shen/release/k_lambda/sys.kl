@@ -49,7 +49,7 @@
 *****************************************************************************************
 "(defun thaw (V1802) (V1802))
 
-(defun eval (V1803) (let Macroexpand (shen.walk (lambda V1800 (macroexpand V1800)) V1803) (if (shen.packaged? Macroexpand) (map shen.eval-without-macros (shen.package-contents Macroexpand)) (shen.eval-without-macros Macroexpand))))
+(defun eval (V1803) (let Macroexpand (shen.walk (lambda V1800 (macroexpand V1800)) V1803) (do (display Macroexpand) (if (shen.packaged? Macroexpand) (map shen.eval-without-macros (shen.package-contents Macroexpand)) (shen.eval-without-macros Macroexpand)))))
 
 (defun shen.eval-without-macros (V1804) (eval-kl (shen.elim-define (shen.proc-input+ V1804))))
 

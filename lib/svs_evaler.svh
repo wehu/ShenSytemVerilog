@@ -978,7 +978,7 @@ class svs_evaler;
         er = eval(e);
         if(exception != null)
           return exception;
-        if(e == false)
+        if(er == false)
           return false;
       end
       return true;
