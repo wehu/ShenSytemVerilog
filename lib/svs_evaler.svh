@@ -81,7 +81,7 @@ class svs_evaler;
     end
     reader = new;
     stack = new;
-    enable_tco = 0;
+    enable_tco = 1;
     exception = null;
   endfunction
 
@@ -938,7 +938,7 @@ class svs_evaler;
     return res;
   endfunction
 
-  function svs_node eval_equal(svs_node ast);
+  function svs_node eval_equal(svs_node ast, integer d=0);
     integer size = ast.val.as_seq.size();
     svs_node l;
     svs_node r;
@@ -947,10 +947,16 @@ class svs_evaler;
       return partial(ast, 3);
     if(size != 3)
       return new_exception(ast, "= expects 2 arguments");
-    l = eval(ast.val.as_seq[1]);
+    if(d == 0)
+      l = eval(ast.val.as_seq[1]);
+    else
+      l = ast.val.as_seq[1];
     if(exception != null)
       return exception;
-    r = eval(ast.val.as_seq[2]);
+    if(d == 0)
+      r = eval(ast.val.as_seq[2]);
+    else
+      r = ast.val.as_seq[2];
     if(exception != null)
       return exception;
     if(r.typ != l.typ)
@@ -961,10 +967,17 @@ class svs_evaler;
     end else if(l.typ == "number") begin
       if(l.val.as_number == r.val.as_number)
         return true;
-    end else if(l.typ == "list" || l.typ == "absvector" || l.typ == "cons") begin
-      integer ll = l.val.as_seq.size();
-      integer rl = r.val.as_seq.size();
+    end else if(l.typ == "absvector" || l.typ == "cons") begin
+      integer ll;
+      integer rl;
       integer i;
+      if(l.typ == "absvector") begin
+        ll = l.val.as_array.size();
+        rl = r.val.as_array.size();
+      end else begin
+        ll = l.val.as_seq.size();
+        rl = r.val.as_seq.size();
+      end
       if(ll != rl)
         return false;
       for(i=0; i<ll; i++) begin
@@ -973,17 +986,23 @@ class svs_evaler;
         svs_node er;
         ef.val.as_string = "=";
         e.val.as_seq.push_back(ef);
-        e.val.as_seq.push_back(l.val.as_seq[i]);
-        e.val.as_seq.push_back(r.val.as_seq[i]);
-        er = eval(e);
+        if(l.typ == "absvector") begin
+          e.val.as_seq.push_back(l.val.as_array[i]);
+          e.val.as_seq.push_back(l.val.as_array[i]);
+        end else begin
+          e.val.as_seq.push_back(l.val.as_seq[i]);
+          e.val.as_seq.push_back(r.val.as_seq[i]);
+        end
+        er = eval_equal(e, d+1);
         if(exception != null)
           return exception;
         if(er == false)
           return false;
       end
       return true;
-    end else if(l == r)
+    end else if(l == r) begin
       return true;
+    end
     return false;
   endfunction
 
