@@ -1267,7 +1267,7 @@ class svs_evaler;
 
   function svs_node eval_arithmetic(svs_node ast);
     integer size = ast.val.as_seq.size();
-    string fn = ast.val.as_seq[0].val.as_string;
+    string fn = eval(ast.val.as_seq[0]).val.as_string;
     svs_node l;
     svs_node r;
     svs_node res;

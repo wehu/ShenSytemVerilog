@@ -60,7 +60,7 @@ class svs_node;
   endfunction
 
   function void show();
-    $display(to_string());
+    $display("%s", to_string());
   endfunction
 
 endclass
