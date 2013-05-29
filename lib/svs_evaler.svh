@@ -1166,7 +1166,7 @@ class svs_evaler;
     if(s.typ != "stream-out" && s.typ != "number")
       return new_exception(ast, {"pr expects a stream-out or number as the first argument but got ", s.typ});
     sid = integer'(s.val.as_number);
-    $fwrite(sid, str.val.as_string);
+    $fwrite(sid, "%s", str.val.as_string);
     return str;
   endfunction
 
